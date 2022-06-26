@@ -3,9 +3,11 @@
 
 .idea/
 
-/venv/*
+/venv/
+/environment/
 
 */config.yaml
 /project/logs/
 */admin.py
+
 

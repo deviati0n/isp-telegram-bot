@@ -1,0 +1,7 @@
+SQLAlchemy~=1.4.37
+aiogram~=2.20
+parsel~=1.6.0
+selenium~=4.2.0
+psycopg2~=2.9.3
+coloredlogs~=15.0.1
+concurrent_log_handler~=0.9.20
