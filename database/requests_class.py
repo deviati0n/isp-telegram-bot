@@ -18,6 +18,11 @@ class RequestsFunction:
         self.session.commit()
 
     def add_request(self, request: str) -> None:
+        """
+        Adding a new request to the database
+        :param: request: new request
+        :return: None
+        """
 
         new_request = Requests(
             request=request
@@ -38,6 +43,10 @@ class RequestsFunction:
             return True
 
     def check_open_requests(self) -> list:
+        """
+        The final data table that applies filters taken from the front
+        :return: final data table
+        """
 
         open_requests_q = self.session.query(
             Requests.id,
@@ -49,17 +58,27 @@ class RequestsFunction:
         return open_requests_q
 
     def update_request(self, id_: int, dict_of_statuses: dict) -> Optional[bool]:
+        """
+        Updating the information (last request) of an existing user
+        :param: login: user login
+        :return: None
+        """
+        dict_of_time_keys = {
+            'closing_time': Requests.closing_time.key,
+            'potential_time': Requests.potential_time.key
+        }
 
         request = self.session.query(
             Requests
         ).filter(
             Requests.id == id_
-        ).update(
-            {
-                Requests.closing_time: dict_of_statuses['closing_time'],
-                Requests.potential_time: dict_of_statuses['potential_time']
-            }
         )
+
+        for k, v in dict_of_statuses.items():
+            if v:
+                request = request.update({
+                    dict_of_time_keys[k]: v
+                })
 
         self.commit()
 

@@ -1,4 +1,3 @@
-import datetime
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 
@@ -26,7 +25,7 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(commands=['help'])
 async def help_command(message: types.Message):
     msg = text(bold('Я могу ответить на следующие команды:'),
-               '/report', '/reportMonth', '/activeUser', '/add', '/close', '/set', '/check', sep='\n')
+               '/report', '/reportmonth', '/add', '/close', '/set', '/check', sep='\n')
     await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -49,14 +48,14 @@ async def report_billing(message: types.Message):
     await bot.send_message(message.from_user.id, report, reply_to_message_id=message.message_id)
 
 
-@dp.message_handler(commands=['reportMonth'])
+@dp.message_handler(commands=['reportmonth'])
 async def accountants_report(message: types.Message):
     prev_month = date.today().month - 1
     max_day = monthrange(date.today().year, prev_month)[1]
     date_bill = {'first_date': date.fromisoformat(f'2022-0{prev_month}-01'),
                  'last_date': date.fromisoformat(f'2022-0{prev_month}-{max_day}')}
-    reportMonth = billing.report_acc_bill(date_bill)
-    await bot.send_message(message.from_user.id, reportMonth, reply_to_message_id=message.message_id)
+    report_month = billing.report_acc_bill(date_bill)
+    await bot.send_message(message.from_user.id, report_month, reply_to_message_id=message.message_id)
 
 
 @dp.message_handler(commands=['activeUser'])
@@ -80,7 +79,7 @@ async def close_request(message: types.Message):
 
     if id_.isdigit() and requests.check_existence_of_id(int(id_)):
         dict_of_statuses = {
-            'closing_time': datetime.datetime.utcnow()
+            'closing_time': datetime.utcnow()
         }
         requests.update_request(int(id_), dict_of_statuses)
         msg = f'Заявка {id_} закрыта'
