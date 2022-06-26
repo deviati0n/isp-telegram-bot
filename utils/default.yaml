@@ -1,0 +1,25 @@
+billing:
+  url: 'billing_url'
+  login: 'login'
+  password: 'password'
+  plan: 3000000
+
+database_bill:
+  user: 'user'
+  password: 'password'
+  host: 'host'
+  port: 5432
+  name: 'name'
+
+database_req:
+  user: 'user'
+  password: 'password'
+  host: 'host'
+  port: 5432
+  name: 'name'
+
+bot:
+  token: 'telegram_bot_token'
+
+logger:
+  loop_time: 10000

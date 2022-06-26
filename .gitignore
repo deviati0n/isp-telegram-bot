@@ -1,0 +1,11 @@
+*.pyc
+*.log
+
+.idea/
+
+/venv/*
+
+*/config.yaml
+/project/logs/
+*/admin.py
+
