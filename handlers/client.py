@@ -6,7 +6,6 @@ from aiogram.types import ParseMode
 from aiogram.utils.markdown import text, bold
 
 from bot_function.billing_class import BillingFunction
-from create_bot import bot
 from create_bot import dp
 from database.requests_class import RequestsFunction
 from project.log_lib import get_logger
@@ -19,11 +18,19 @@ logger = get_logger('logs')
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
+    """
+    Sends a welcome/start message
+    :param message: message from telegram chat
+    """
     await message.answer("Привет! Я бот-помощник для интернет-провайдера.")
 
 
 @dp.message_handler(commands=['help'])
 async def help_command(message: types.Message):
+    """
+    Sends a help message
+    :param message: message from telegram chat
+    """
     msg = text(bold('Я могу ответить на следующие команды:'),
                '/report', '/reportmonth', '/add', '/close', '/set', '/check', sep='\n')
     await message.reply(msg, parse_mode=ParseMode.MARKDOWN)
@@ -31,6 +38,10 @@ async def help_command(message: types.Message):
 
 @dp.message_handler(commands=['report'])
 async def report_billing(message: types.Message):
+    """
+    Sends a daily report
+    :param message: message from telegram chat
+    """
     received_message = message.get_args().split(' ')
     default_date = [date.today() - timedelta(days=1)]
 
@@ -41,40 +52,60 @@ async def report_billing(message: types.Message):
 
     date_bill = received_date if any(received_message) else default_date
 
-    date_bill = {'first_date': date_bill[0], 'last_date': date_bill[0]} if len(date_bill) == 1 \
-        else {'first_date': date_bill[0], 'last_date': date_bill[1]}
+    if len(date_bill) == 1:
+        date_bill = {'first_date': date_bill[0], 'last_date': date_bill[0]}
+    else:
+        date_bill = {'first_date': date_bill[0], 'last_date': date_bill[1]}
 
     report = billing.billing_report(date_bill)
-    await bot.send_message(message.from_user.id, report, reply_to_message_id=message.message_id)
+    await message.reply(report)
 
 
 @dp.message_handler(commands=['reportmonth'])
 async def accountants_report(message: types.Message):
+    """
+    Sends a monthly report
+    :param message: message from telegram chat
+    """
     prev_month = date.today().month - 1
+
     max_day = monthrange(date.today().year, prev_month)[1]
-    date_bill = {'first_date': date.fromisoformat(f'2022-0{prev_month}-01'),
-                 'last_date': date.fromisoformat(f'2022-0{prev_month}-{max_day}')}
+    prev_month = f'0{prev_month}' if prev_month < 10 else prev_month
+    date_bill = {'first_date': date.fromisoformat(f'2022-{prev_month}-01'),
+                 'last_date': date.fromisoformat(f'2022-{prev_month}-{max_day}')}
     report_month = billing.report_acc_bill(date_bill)
-    await bot.send_message(message.from_user.id, report_month, reply_to_message_id=message.message_id)
+    await message.reply(report_month)
 
 
 @dp.message_handler(commands=['activeUser'])
 async def active_user(message: types.Message):
+    """
+    Runs script of updating table with active user
+    :param message: message from telegram chat
+    """
     billing.receive_user_data()
-    await message.answer('Таблица с пользователя была обновлена')
+    await message.reply('Таблица с пользователя была обновлена')
 
 
 @dp.message_handler(commands=['add'])
 async def add_request(message: types.Message):
+    """
+    Runs script of adding a new repair request
+    :param message: message from telegram chat
+    """
     request = message.get_args()
     requests.add_request(request)
 
     logger.info('Adding request has been processed')
-    await bot.send_message(message.from_user.id, f'Заявка "{request}" добавлена', reply_to_message_id=message.message_id)
+    await message.reply(f'Заявка "{request}" добавлена')
 
 
 @dp.message_handler(commands=['close'])
-async def close_request(message: types.Message):
+async def closure_request(message: types.Message):
+    """
+    Prepares arguments and runs script of closing a repair request
+    :param message: message from telegram chat
+    """
     id_ = message.get_args()
 
     if id_.isdigit() and requests.check_existence_of_id(int(id_)):
@@ -87,11 +118,15 @@ async def close_request(message: types.Message):
         msg = f'Некорректные данные для изменения'
 
     logger.info('Closure request has been processed')
-    await bot.send_message(message.from_user.id, msg, reply_to_message_id=message.message_id)
+    await message.reply(msg)
 
 
 @dp.message_handler(commands=['set'])
 async def set_time(message: types.Message):
+    """
+    Prepares arguments and runs script of setting potential time to a repair request
+    :param message: message from telegram chat
+    """
     request = message.get_args()
     split_request = reg_expr(request)
 
@@ -106,11 +141,15 @@ async def set_time(message: types.Message):
         msg = f'Некорректные данные для изменения'
 
     logger.info('Update request has been processed')
-    await bot.send_message(message.from_user.id, msg, reply_to_message_id=message.message_id)
+    await message.reply(msg)
 
 
 @dp.message_handler(commands=['check'])
 async def check_open_requests(message: types.Message):
-    open_requests_list = requests.check_open_requests()
-    open_requests_str = open_req_to_string(open_requests_list)
-    await bot.send_message(message.from_user.id, open_requests_str, reply_to_message_id=message.message_id)
+    """
+    Sends active repair requests
+    :param message: message from telegram chat
+    """
+    open_requests_list = requests.get_open_requests()
+    open_requests_str = open_req_to_string(open_requests_list) or 'Нет активных заявок'
+    await message.reply(open_requests_str)

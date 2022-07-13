@@ -1,4 +1,5 @@
 from typing import Optional
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -7,6 +8,9 @@ from project.project_context import ProjectContext
 
 
 class RequestsFunction:
+    """
+    A class for interacting with Requests Table
+    """
     context = ProjectContext()
     engine = create_engine(context.database_req_config.db_connection)
 
@@ -15,11 +19,14 @@ class RequestsFunction:
         self.session = self.Session()
 
     def commit(self):
+        """
+        Commits the current changes
+        """
         self.session.commit()
 
     def add_request(self, request: str) -> None:
         """
-        Adding a new request to the database
+        Adds a new request to the database
         :param: request: new request
         :return: None
         """
@@ -32,25 +39,30 @@ class RequestsFunction:
         self.commit()
 
     def check_existence_of_id(self, id_: int) -> Optional[bool]:
-
+        """
+        Checks existence of id in Requests table and that the request was not closed earlier
+        :param id_: id of request
+        :return: bool value of existence or None
+        """
         request = self.session.query(
             Requests
         ).filter(
             Requests.id == id_
         ).first()
 
-        if request:
+        if request and not request.closing_time:
             return True
 
-    def check_open_requests(self) -> list:
+    def get_open_requests(self) -> list:
         """
-        The final data table that applies filters taken from the front
-        :return: final data table
+        Gets a list of open requests from Requests table
+        :return: list of open requests
         """
 
         open_requests_q = self.session.query(
             Requests.id,
-            Requests.request
+            Requests.request,
+            Requests.potential_time
         ).filter(
             Requests.closing_time.is_(None)
         ).all()
@@ -59,9 +71,10 @@ class RequestsFunction:
 
     def update_request(self, id_: int, dict_of_statuses: dict) -> Optional[bool]:
         """
-        Updating the information (last request) of an existing user
-        :param: login: user login
-        :return: None
+        Updates closing time or potential time of request from Requests table
+        :param id_: id of request
+        :param dict_of_statuses: dict with values of closing time and potential time
+        :return: bool value of updating or None
         """
         dict_of_time_keys = {
             'closing_time': Requests.closing_time.key,

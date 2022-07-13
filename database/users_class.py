@@ -6,6 +6,9 @@ from project.project_context import ProjectContext
 
 
 class UsersFunction:
+    """
+    A class for interacting with Users Table
+    """
     context = ProjectContext()
     engine = sa.create_engine(context.database_bill_config.db_connection)
 
@@ -13,10 +16,16 @@ class UsersFunction:
         self.Session = sessionmaker(self.engine)
         self.session = self.Session()
 
-    def commit(self):
+    def commit(self) -> None:
+        """
+        Commits the current changes
+        """
         self.session.commit()
 
-    def clear_table(self):
+    def clear_table(self) -> None:
+        """
+        Clears a Users table
+        """
         self.session.query(
             Users
         ).delete(
@@ -24,12 +33,21 @@ class UsersFunction:
         )
         self.commit()
 
-    def add_user_q(self, users: list['Users']) -> None:
+    def add_user(self, users: list['Users']) -> None:
+        """
+        Adds users to the Users table
+        :param users: list of users
+        """
         self.clear_table()
         self.session.bulk_save_objects(users)
         self.commit()
 
-    def find_users_q(self, user_login: str) -> bool:
+    def find_users(self, user_login: str) -> bool:
+        """
+        User search by login
+        :param user_login: user login
+        :return: bool value of user existence  in table
+        """
         request = self.session.query(
             Users
         ).filter(
@@ -40,6 +58,9 @@ class UsersFunction:
             return True
 
     def clear_all_active(self) -> None:
+        """
+        Updates the activity status for all users. Sets statuses to False
+        """
         self.session.query(
             Users
         ).update(
@@ -48,7 +69,11 @@ class UsersFunction:
 
         self.commit()
 
-    def update_active_status_q(self, user_login: str) -> None:
+    def update_active_status(self, user_login: str) -> None:
+        """
+        Updates the activity status for user. Sets status to True
+        :param user_login: user login
+        """
         self.session.query(
             Users
         ).filter(

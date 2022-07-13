@@ -1,7 +1,5 @@
-import datetime
 import re
 from datetime import timedelta
-from typing import Dict, Any
 
 from parsel import Selector
 from selenium import webdriver
@@ -19,10 +17,19 @@ users = UsersFunction()
 
 
 class BillingFunction:
+    """
+    A class for parsing data from a billing system
+    """
 
     @staticmethod
-    def auth(link: str, driver: Any) -> Any:
-        driver.get(link)
+    def auth(url: str, driver: 'webdriver.Chrome') -> 'webdriver.Chrome':
+        """
+        User authorization to the billing system
+        :param url: url of the billing system
+        :param driver: instance of the chrome driver
+        :return: instance of the chrome driver
+        """
+        driver.get(url)
 
         try:
             login = context.billing_config.login
@@ -42,35 +49,46 @@ class BillingFunction:
 
         return driver
 
-    def req_connecting_sub(self, driver: Any, date_bill: str) -> list:
+    def req_connecting_sub(self, driver: 'webdriver.Chrome', date_bill: str) -> list:
+        """
+        Gathers the number of connection requests for the day and from the beginning of the month
+        :param driver: instance of the chrome driver
+        :param date_bill: input date
+        :return: list of the number of connection requests for each period
+        """
         start_date = date_bill[:len(date_bill) - 2] + '01'
         driver = self.auth(context.billing_config.url + f'admin/index.cgi?index=178&search=1&type=178&PRIORITY=0'
                                                         f'&root_index=8&TO_DATE={date_bill}&'
-                                                        f'search_form=1&PAGE_ROWS=50&FROM_DATE={start_date}&'
+                                                        f'search_form=1&PAGE_ROWS=100&FROM_DATE={start_date}&'
                                                         f'ALL_MSGS=1&pg=0', driver)
 
         req_connect_subs_day = driver.find_elements(By.PARTIAL_LINK_TEXT, date_bill)
         req_connect_subs_period = 0
-        page = 50
+        page = 100
 
         while True:
             req_connect_subs = driver.find_elements(By.PARTIAL_LINK_TEXT, date_bill[:len(date_bill) - 2])
             req_connect_subs_period += len(req_connect_subs)
 
-            if len(req_connect_subs) < 50:
+            if len(req_connect_subs) < 100:
                 break
             else:
                 driver.find_element(By.XPATH, f'//*/a[@title = {page}]').click()
-                page += 50
+                page += 100
 
         return [len(req_connect_subs_day), req_connect_subs_period]
 
-    def connecting_sub(self, driver: Any, date_bill: str) -> list:
+    def connecting_sub(self, driver: 'webdriver.Chrome', date_bill: str) -> list:
+        """
+        Gathers the number of ready connection for the day and from the beginning of the month
+        :param driver: instance of the chrome driver
+        :param date_bill: input date
+        :return: list of the number of ready connections for each period
+        """
         start_date = date_bill[:len(date_bill) - 2] + '01'
         driver = self.auth(context.billing_config.url + f'admin/index.cgi?index=22&search_form=1&LOGIN=&'
                                                         f'PAGE_ROWS=&FROM_DATE={start_date}&TO_DATE={date_bill}&'
-                                                        f'ADMIN=&ACTION=&TYPE=7&MODULE=&IP=&search=1',
-                           driver)
+                                                        f'ADMIN=&ACTION=&TYPE=7&MODULE=&IP=&search=1', driver)
 
         connect_table = driver.find_element(By.ID, 'p_')
         connect_subs = connect_table.find_element(By.TAG_NAME, 'b')
@@ -79,7 +97,13 @@ class BillingFunction:
 
         return [len(connect_subs_day), connect_subs.text]
 
-    def calculate_payment(self, driver: Any, date_bill: str) -> list:
+    def calculate_payment(self, driver: 'webdriver.Chrome', date_bill: str) -> list:
+        """
+        Gathers the amount of money transfers for the day and from the beginning of the month
+        :param driver: instance of the chrome driver
+        :param date_bill: input date
+        :return: list of the amount of money transfers for each period
+        """
         start_date = date_bill[:len(date_bill) - 2] + '01'
 
         driver = self.auth(context.billing_config.url + f'admin/index.cgi?index=42', driver)
@@ -103,6 +127,11 @@ class BillingFunction:
         return [sum_day.text, sum_payment.text]
 
     def report_acc_bill(self, date_bill: dict):
+        """
+        Makes a monthly report for each payment systems
+        :param date_bill: input date
+        :return: final report
+        """
         driver = webdriver.Chrome(context.path)
         driver = self.auth(context.billing_config.url + f'admin/index.cgi?index=42', driver)
 
@@ -128,19 +157,33 @@ class BillingFunction:
         return '\n'.join(msg_list)
 
     @staticmethod
-    def update_dict_bill(req: list, con: list, summ: list, bill: Dict[str, float]) -> Dict[str, float]:
-        bill['dayReq'] += int(req[0])
-        bill['periodReq'] = max(int(req[1]), int(bill['periodReq']))
+    def update_dict_bill(requests: list, connections: list, sum_payments: list,
+                         bill: dict[str, float]) -> dict[str, float]:
+        """
+        Updates the dict with new data
+        :param requests: list of the number of connection requests for each period
+        :param connections: list of the number of ready connections for each period
+        :param sum_payments: list of the amount of money transfers for each period
+        :param bill: dict with the received data
+        :return: updated dict
+        """
+        bill['dayReq'] += int(requests[0])
+        bill['periodReq'] = max(int(requests[1]), int(bill['periodReq']))
 
-        bill['dayCon'] += int(con[0])
-        bill['periodCon'] = max(int(con[1]), int(bill['periodCon']))
+        bill['dayCon'] += int(connections[0])
+        bill['periodCon'] = max(int(connections[1]), int(bill['periodCon']))
 
-        bill['daySum'] += float(summ[0])
-        bill['periodSum'] = max(float(summ[1]), bill['periodSum'])
+        bill['daySum'] += float(sum_payments[0])
+        bill['periodSum'] = max(float(sum_payments[1]), bill['periodSum'])
 
         return bill
 
     def billing_report(self, date_bill: dict) -> str:
+        """
+        Preparations of a daily report
+        :param date_bill: dict with start and end date
+        :return: final report
+        """
         driver = webdriver.Chrome(context.path)
 
         bill = {'dayReq': 0, 'periodReq': 0, 'dayCon': 0, 'periodCon': 0, 'daySum': 0, 'periodSum': 0, 'percent': 0.0}
@@ -148,22 +191,21 @@ class BillingFunction:
         while date_bill['first_date'] <= date_bill['last_date']:
             req = self.req_connecting_sub(driver, str(date_bill['first_date']))
             con = self.connecting_sub(driver, str(date_bill['first_date']))
-            summ = self.calculate_payment(driver, str(date_bill['first_date']))
+            sum_payments = self.calculate_payment(driver, str(date_bill['first_date']))
 
-            print(date_bill['first_date'])
-            print(req, con, summ)
-
-            bill = self.update_dict_bill(req, con, summ, bill)
+            bill = self.update_dict_bill(req, con, sum_payments, bill)
             date_bill['first_date'] = date_bill['first_date'] + timedelta(days=1)
 
         bill['percent'] = round((float(bill['periodSum']) * 100) / context.billing_config.plan, 1)
         driver.close()
 
-        return BillingReport(bill).report()
+        report: str = BillingReport(bill).report()
+        return report
 
     def receive_user_data(self):
-        start_time = datetime.datetime.now()
-
+        """
+        Gathers all users from the billing system
+        """
         driver = webdriver.Chrome(context.path)
         driver = self.auth(context.billing_config.url + f'admin/index.cgi?index=11&pg=0', driver)
 
@@ -205,12 +247,13 @@ class BillingFunction:
 
         print("[+] Created list with models")
 
-        users.add_user_q(list_of_users)
+        users.add_user(list_of_users)
         print("[+] Added data to the table")
-        print(datetime.datetime.now() - start_time)
 
     def receive_active_users(self):
-
+        """
+        Gathers all active users from the billing system
+        """
         users.clear_all_active()
 
         driver = webdriver.Chrome(context.path)
@@ -225,5 +268,5 @@ class BillingFunction:
 
             for login in users_login:
                 login = login.text
-                if users.find_users_q(login):
-                    users.update_active_status_q(login)
+                if users.find_users(login):
+                    users.update_active_status(login)
